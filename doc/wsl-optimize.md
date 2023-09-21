@@ -15,7 +15,7 @@ Usage
 
 1. Open a PowerShell terminal.
 
-2. Run the `Optimize-WSL.ps1` script:
+2. Run the `wsl-optimize.ps1` script:
 
    ```powershell
    .\wsl-optimize.ps1
