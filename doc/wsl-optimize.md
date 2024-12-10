@@ -39,6 +39,10 @@ Usage
 
 6. The optimization process is complete, and your selected WSL distribution's VHDX file is now optimized.
 
+### Logging and Error Handling
+
+The script includes detailed logging to track the progress and status of the optimization process. Logs are stored in a specified directory for future reference and troubleshooting. Additionally, error handling is implemented to manage exceptions and provide meaningful error messages to the user.
+
 ## Troubleshooting
 
 If you encounter errors or issues during the optimization process, please check the error messages for more information.

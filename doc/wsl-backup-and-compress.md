@@ -41,6 +41,10 @@ Replace `C:\YourBackupDirectory` with the path to the directory where you want t
 
 7. Older backups beyond the specified count will be automatically deleted.
 
+### Logging and Error Handling
+
+The script includes detailed logging to track the progress and status of the backup process. Logs are stored in a specified directory for future reference and troubleshooting. Additionally, error handling is implemented to manage exceptions and provide meaningful error messages to the user.
+
 ## Example
 
 Here's an example command to run the script:

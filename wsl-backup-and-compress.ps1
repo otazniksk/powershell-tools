@@ -6,15 +6,36 @@ param (
     [int]$BackupsToKeep = 6
 )
 
+# Define the log directory and log file
+$LogDirectory = "$BackupDirectory\Logs"
+$LogFile = "$LogDirectory\backup_log_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+# Function to log messages
+function Log-Message {
+    param (
+        [string]$Message,
+        [string]$Type = "INFO"
+    )
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $LogEntry = "[$Timestamp] [$Type] $Message"
+    Write-Output $LogEntry
+    Add-Content -Path $LogFile -Value $LogEntry
+}
+
+# Create the log directory if it doesn't exist
+if (-not (Test-Path -Path $LogDirectory -PathType Container)) {
+    New-Item -Path $LogDirectory -ItemType Directory | Out-Null
+}
+
 # Check if the $BackupDirectory parameter is provided
 if (-not $BackupDirectory) {
-    Write-Error "BackupDirectory is a required parameter. Please provide a valid directory path, e.g., C:\Backup."
+    Log-Message "BackupDirectory is a required parameter. Please provide a valid directory path, e.g., C:\Backup." "ERROR"
     return
 }
 
 # Check if the specified directory exists
 if (-not (Test-Path -Path $BackupDirectory -PathType Container)) {
-    Write-Error "The specified directory '$BackupDirectory' does not exist."
+    Log-Message "The specified directory '$BackupDirectory' does not exist." "ERROR"
     return
 }
 
@@ -56,11 +77,14 @@ if ([int]::TryParse($Selection, [ref]$null)) {
     if ($SelectedIndex -ge 0 -and $SelectedIndex -lt $AvailableDistributions.Count) {
         $SelectedDistribution = $AvailableDistributions[$SelectedIndex]
 
-        Write-Output "Selected WSL '$SelectedDistribution' distribution"
+        Log-Message "Selected WSL '$SelectedDistribution' distribution"
 
         #### http://mats.gardstad.se/matscodemix/2009/02/05/calling-7-zip-from-powershell/ 
         # Alias for 7-zip
-        if (-not (test-path "$env:ProgramFiles\7-Zip\7z.exe")) {throw "$env:ProgramFiles\7-Zip\7z.exe needed"}
+        if (-not (test-path "$env:ProgramFiles\7-Zip\7z.exe")) {
+            Log-Message "$env:ProgramFiles\7-Zip\7z.exe needed" "ERROR"
+            throw "$env:ProgramFiles\7-Zip\7z.exe needed"
+        }
         set-alias sz "$env:ProgramFiles\7-Zip\7z.exe"
         #### Alternative native PS 7-zip: https://www.sans.org/blog/powershell-7-zip-module-versus-compress-archive-with-encryption/
 
@@ -72,15 +96,24 @@ if ([int]::TryParse($Selection, [ref]$null)) {
         $filePath = -join("$BackupDirectory", "\", "$SelectedDistribution", "_", "$currentDate", ".tar")
         ################ End of Variables ###############
 
-        ## Run the export to get the .tar file
-        wsl --export "$SelectedDistribution" "$filePath"
-        ## Let's compress it using 7zip and max compression, and use -sdel to delete the original file after successful compression
-        sz a -t7z -mx=9 -sdel "$filePath.7z" "$filePath"
-        ## Let's remove everything except the last X backups (X month history)
-        gci "$BackupDirectory" -Recurse| where{-not $_.PsIsContainer} | sort LastWriteTime -desc | select -Skip $BackupsToKeep | Remove-Item -Force
+        try {
+            ## Run the export to get the .tar file
+            wsl --export "$SelectedDistribution" "$filePath"
+            Log-Message "Exported WSL distribution '$SelectedDistribution' to '$filePath'"
+
+            ## Let's compress it using 7zip and max compression, and use -sdel to delete the original file after successful compression
+            sz a -t7z -mx=9 -sdel "$filePath.7z" "$filePath"
+            Log-Message "Compressed '$filePath' to '$filePath.7z' using 7zip"
+
+            ## Let's remove everything except the last X backups (X month history)
+            gci "$BackupDirectory" -Recurse| where{-not $_.PsIsContainer} | sort LastWriteTime -desc | select -Skip $BackupsToKeep | Remove-Item -Force
+            Log-Message "Removed old backups, keeping the last $BackupsToKeep backups"
+        } catch {
+            Log-Message "An error occurred: $_" "ERROR"
+        }
     } else {
-        Write-Error "Invalid selection. Please enter a valid number."
+        Log-Message "Invalid selection. Please enter a valid number." "ERROR"
     }
 } else {
-    Write-Error "Invalid input. Please enter a number."
+    Log-Message "Invalid input. Please enter a number." "ERROR"
 }
